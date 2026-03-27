@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Movie Night</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg: #09090f;
+      --card: #131320;
+      --card2: #1c1c2e;
+      --accent: #7c3aed;
+      --accent2: #ec4899;
+      --text: #f1f0f9;
+      --muted: #8b8aa8;
+      --border: #2a2a3d;
+      --radius: 16px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    header {
+      text-align: center;
+      padding: 48px 24px 32px;
+    }
+
+    header h1 {
+      font-size: 2.6rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, #a78bfa, #ec4899);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      letter-spacing: -0.5px;
+    }
+
+    header p {
+      color: var(--muted);
+      margin-top: 8px;
+      font-size: 1.05rem;
+    }
+
+    /* API Setup */
+    .api-setup {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px;
+      max-width: 480px;
+      width: calc(100% - 48px);
+      margin-bottom: 32px;
+      text-align: center;
+    }
+
+    .api-setup h3 { font-size: 1.05rem; margin-bottom: 6px; }
+
+    .api-setup p {
+      color: var(--muted);
+      font-size: 0.875rem;
+      margin-bottom: 16px;
+      line-height: 1.5;
+    }
+
+    .api-setup a { color: #a78bfa; }
+
+    .api-input-row { display: flex; gap: 8px; }
+
+    .api-input-row input {
+      flex: 1;
+      background: var(--card2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: 0.95rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .api-input-row input:focus { border-color: var(--accent); }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: white;
+      border: none;
+      border-radius: 10px;
+      padding: 10px 20px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.1s;
+      white-space: nowrap;
+    }
+
+    .btn-primary:hover { opacity: 0.88; }
+    .btn-primary:active { transform: scale(0.97); }
+
+    .key-saved {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 0.8rem;
+      color: #34d399;
+      margin-top: 10px;
+    }
+
+    /* Mood Section */
+    #mood-section {
+      width: 100%;
+      max-width: 680px;
+      padding: 0 24px 40px;
+    }
+
+    .section-label {
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--muted);
+      margin-bottom: 16px;
+    }
+
+    .mood-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+    }
+
+    .mood-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px 10px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.18s;
+      user-select: none;
+    }
+
+    .mood-card:hover {
+      border-color: var(--accent);
+      background: var(--card2);
+      transform: translateY(-2px);
+    }
+
+    .mood-card.active {
+      border-color: #a78bfa;
+      background: rgba(124, 58, 237, 0.15);
+    }
+
+    .mood-card .emoji { font-size: 2rem; display: block; margin-bottom: 8px; }
+    .mood-card .label { font-size: 0.875rem; font-weight: 700; display: block; }
+    .mood-card .sublabel { font-size: 0.72rem; color: var(--muted); margin-top: 3px; display: block; }
+
+    /* Loading */
+    #loading {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      padding: 56px;
+    }
+
+    .spinner {
+      width: 38px;
+      height: 38px;
+      border: 3px solid var(--border);
+      border-top-color: #a78bfa;
+      border-radius: 50%;
+      animation: spin 0.75s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Result */
+    #result-section {
+      display: none;
+      width: 100%;
+      max-width: 680px;
+      padding: 0 24px 56px;
+      animation: fadeUp 0.35s ease;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(18px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .movie-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      overflow: hidden;
+      display: flex;
+    }
+
+    .movie-poster {
+      width: 175px;
+      flex-shrink: 0;
+      background: var(--card2);
+    }
+
+    .movie-poster img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .no-poster {
+      width: 100%;
+      min-height: 265px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 3rem;
+      color: var(--border);
+    }
+
+    .movie-info {
+      padding: 22px 22px 22px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    .movie-tags {
+      display: flex;
+      gap: 7px;
+      flex-wrap: wrap;
+      margin-bottom: 11px;
+    }
+
+    .tag {
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 3px 9px;
+      border-radius: 20px;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+
+    .tag-mood    { background: rgba(124,58,237,0.2);  color: #a78bfa; border: 1px solid rgba(124,58,237,0.35); }
+    .tag-year    { background: rgba(236,72,153,0.15); color: #f472b6; border: 1px solid rgba(236,72,153,0.25); }
+    .tag-time    { background: rgba(16,185,129,0.1);  color: #34d399; border: 1px solid rgba(16,185,129,0.2); }
+    .tag-theatre { background: rgba(251,191,36,0.12); color: #fbbf24; border: 1px solid rgba(251,191,36,0.3); }
+
+    .streaming-section {
+      margin-top: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+
+    .streaming-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .streaming-label {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--muted);
+      white-space: nowrap;
+      min-width: 52px;
+    }
+
+    .provider-logos {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .provider-logo {
+      width: 28px;
+      height: 28px;
+      border-radius: 7px;
+      object-fit: cover;
+      border: 1px solid var(--border);
+      transition: transform 0.15s;
+    }
+
+    .provider-logo:hover { transform: scale(1.15); }
+
+    .streaming-unavailable {
+      font-size: 0.78rem;
+      color: var(--muted);
+      font-style: italic;
+    }
+
+    .movie-title {
+      font-size: 1.45rem;
+      font-weight: 800;
+      line-height: 1.2;
+      margin-bottom: 9px;
+    }
+
+    .movie-rating {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+
+    .stars { color: #fbbf24; font-size: 0.88rem; letter-spacing: 1px; }
+    .rating-num { font-size: 0.85rem; color: var(--muted); }
+
+    .movie-overview {
+      font-size: 0.875rem;
+      color: var(--muted);
+      line-height: 1.65;
+      flex: 1;
+      display: -webkit-box;
+      -webkit-line-clamp: 4;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .movie-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 18px;
+      flex-wrap: wrap;
+    }
+
+    .btn-secondary {
+      background: var(--card2);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 9px 16px;
+      font-size: 0.875rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.18s;
+    }
+
+    .btn-secondary:hover {
+      border-color: #a78bfa;
+      background: rgba(124, 58, 237, 0.1);
+    }
+
+    .error-msg {
+      background: rgba(239,68,68,0.08);
+      border: 1px solid rgba(239,68,68,0.25);
+      color: #fca5a5;
+      border-radius: 12px;
+      padding: 18px 22px;
+      text-align: center;
+      font-size: 0.9rem;
+      line-height: 1.5;
+    }
+
+    @media (max-width: 540px) {
+      header h1 { font-size: 2rem; }
+      .mood-grid { grid-template-columns: repeat(2, 1fr); }
+      .movie-card { flex-direction: column; }
+      .movie-poster { width: 100%; height: 230px; }
+      .no-poster { min-height: 230px; }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>🎬 Movie Night</h1>
+    <p>Pick a vibe, get a movie.</p>
+  </header>
+
+  <div class="api-setup" id="api-setup">
+    <h3>Connect to TMDB</h3>
+    <p>Free API key at <a href="https://www.themoviedb.org/settings/api" target="_blank">themoviedb.org</a><br>Stored locally in your browser — never sent anywhere else.</p>
+    <div class="api-input-row">
+      <input type="text" id="api-key-input" placeholder="Paste your API key..." />
+      <button class="btn-primary" onclick="saveKey()">Let's go</button>
+    </div>
+    <div id="key-status"></div>
+  </div>
+
+  <div id="mood-section" style="display:none">
+    <div class="section-label">What's the vibe tonight?</div>
+    <div class="mood-grid" id="mood-grid"></div>
+  </div>
+
+  <div id="loading">
+    <div class="spinner"></div>
+    <span style="color:var(--muted);font-size:0.9rem">Finding your movie...</span>
+  </div>
+
+  <div id="result-section">
+    <div class="section-label">Tonight's pick</div>
+    <div id="movie-container"></div>
+    <div class="movie-actions">
+      <button class="btn-secondary" onclick="tryAnother()">🔀 Try Another</button>
+      <button class="btn-secondary" onclick="changeMood()">← Change Mood</button>
+    </div>
+  </div>
+
+  <script>
+    const MOODS = [
+      { id: 'cozy',      emoji: '🛋️', label: 'Cozy',         sublabel: 'Warm & comfy',      genres: [18, 10751, 10749] },
+      { id: 'thrilling', emoji: '⚡', label: 'Thrilling',    sublabel: 'Edge of your seat',  genres: [28, 53, 12] },
+      { id: 'funny',     emoji: '😂', label: 'Funny',        sublabel: 'Laugh out loud',     genres: [35] },
+      { id: 'romantic',  emoji: '💕', label: 'Romantic',     sublabel: 'Hearts & feels',     genres: [10749, 18] },
+      { id: 'scary',     emoji: '😱', label: 'Scary',        sublabel: 'Lights off',         genres: [27, 53] },
+      { id: 'epic',      emoji: '🚀', label: 'Epic',         sublabel: 'Grand & sweeping',   genres: [28, 12, 14, 878] },
+      { id: 'mindbend',  emoji: '🤯', label: 'Mind-Bending', sublabel: 'Deep & twisty',      genres: [9648, 878, 18] },
+      { id: 'feelgood',  emoji: '✨', label: 'Feel-Good',    sublabel: 'Pure joy',           genres: [35, 10751, 16] },
+    ];
+
+    let apiKey = localStorage.getItem('tmdb_key') || '';
+    let currentMood = null;
+    let currentMovies = [];
+    let currentIndex = 0;
+
+    if (apiKey) showMoodSection();
+
+    function saveKey() {
+      const val = document.getElementById('api-key-input').value.trim();
+      if (!val) return;
+      apiKey = val;
+      localStorage.setItem('tmdb_key', val);
+      document.getElementById('key-status').innerHTML = '<span class="key-saved">✓ Saved!</span>';
+      setTimeout(showMoodSection, 500);
+    }
+
+    function showMoodSection() {
+      document.getElementById('api-setup').style.display = 'none';
+      const moodSec = document.getElementById('mood-section');
+      moodSec.style.display = 'block';
+      document.getElementById('mood-grid').innerHTML = MOODS.map(m => `
+        <div class="mood-card" id="mood-${m.id}" onclick="selectMood('${m.id}')">
+          <span class="emoji">${m.emoji}</span>
+          <span class="label">${m.label}</span>
+          <span class="sublabel">${m.sublabel}</span>
+        </div>
+      `).join('');
+    }
+
+    async function selectMood(id) {
+      currentMood = MOODS.find(m => m.id === id);
+      currentMovies = [];
+      currentIndex = 0;
+      document.querySelectorAll('.mood-card').forEach(c => c.classList.remove('active'));
+      document.getElementById('mood-' + id)?.classList.add('active');
+      await fetchAndShow();
+    }
+
+    async function fetchAndShow() {
+      setLoading(true);
+      setResult(false);
+
+      const page = Math.floor(Math.random() * 8) + 1;
+      const genres = currentMood.genres.join(',');
+      const url = `https://api.themoviedb.org/3/discover/movie?api_key=${apiKey}&with_genres=${genres}&sort_by=popularity.desc&vote_count.gte=200&page=${page}&language=en-US`;
+
+      try {
+        const res = await fetch(url);
+        if (res.status === 401) throw new Error('invalid_key');
+        if (!res.ok) throw new Error('api_error');
+        const data = await res.json();
+        if (!data.results?.length) throw new Error('no_results');
+
+        currentMovies = data.results.sort(() => Math.random() - 0.5);
+        currentIndex = 0;
+        await renderMovie();
+      } catch (err) {
+        setLoading(false);
+        const msg = err.message === 'invalid_key'
+          ? 'Invalid API key — double-check it and <a href="#" onclick="resetKey()">try again</a>.'
+          : 'Could not load movies. Check your connection and try again.';
+        document.getElementById('movie-container').innerHTML = `<div class="error-msg">⚠️ ${msg}</div>`;
+        setResult(true);
+      }
+    }
+
+    async function renderMovie() {
+      if (currentIndex >= currentMovies.length) {
+        await fetchAndShow();
+        return;
+      }
+
+      const movie = currentMovies[currentIndex++];
+
+      let runtime = null;
+      let watchProviders = null;
+      try {
+        const [detailRes, providerRes] = await Promise.all([
+          fetch(`https://api.themoviedb.org/3/movie/${movie.id}?api_key=${apiKey}`),
+          fetch(`https://api.themoviedb.org/3/movie/${movie.id}/watch/providers?api_key=${apiKey}`)
+        ]);
+        const d = await detailRes.json();
+        runtime = d.runtime || null;
+        const p = await providerRes.json();
+        watchProviders = p.results?.US || null;
+      } catch {}
+
+      setLoading(false);
+
+      const poster = movie.poster_path
+        ? `<img src="https://image.tmdb.org/t/p/w400${movie.poster_path}" alt="${escHtml(movie.title)}" loading="lazy">`
+        : `<div class="no-poster">🎬</div>`;
+
+      const year = movie.release_date?.slice(0, 4) || '—';
+      const rating = movie.vote_average ? movie.vote_average.toFixed(1) : '—';
+      const stars = toStars(movie.vote_average);
+      const runtimeTag = runtime ? `<span class="tag tag-time">⏱ ${Math.floor(runtime/60)}h ${runtime%60}m</span>` : '';
+
+      // Theatre badge: released within last 90 days
+      const releaseMs = movie.release_date ? new Date(movie.release_date).getTime() : null;
+      const now = Date.now();
+      const inTheatres = releaseMs && (now - releaseMs) >= 0 && (now - releaseMs) < 90 * 24 * 60 * 60 * 1000;
+      const theatreTag = inTheatres ? `<span class="tag tag-theatre">🎟 In Theatres</span>` : '';
+
+      // Streaming section
+      const streamingHTML = buildStreamingHTML(watchProviders);
+
+      document.getElementById('movie-container').innerHTML = `
+        <div class="movie-card">
+          <div class="movie-poster">${poster}</div>
+          <div class="movie-info">
+            <div class="movie-tags">
+              <span class="tag tag-mood">${currentMood.emoji} ${currentMood.label}</span>
+              <span class="tag tag-year">${year}</span>
+              ${runtimeTag}
+              ${theatreTag}
+            </div>
+            <div class="movie-title">${escHtml(movie.title)}</div>
+            <div class="movie-rating">
+              <span class="stars">${stars}</span>
+              <span class="rating-num">${rating} / 10</span>
+            </div>
+            <div class="movie-overview">${escHtml(movie.overview || 'No description available.')}</div>
+            ${streamingHTML}
+          </div>
+        </div>
+      `;
+
+      setResult(true);
+    }
+
+    async function tryAnother() {
+      setLoading(true);
+      setResult(false);
+      await renderMovie();
+    }
+
+    function changeMood() {
+      setResult(false);
+      document.querySelectorAll('.mood-card').forEach(c => c.classList.remove('active'));
+      currentMood = null;
+    }
+
+    function resetKey() {
+      localStorage.removeItem('tmdb_key');
+      apiKey = '';
+      setResult(false);
+      document.getElementById('mood-section').style.display = 'none';
+      document.getElementById('api-setup').style.display = 'block';
+      document.getElementById('key-status').innerHTML = '';
+    }
+
+    function setLoading(show) {
+      document.getElementById('loading').style.display = show ? 'flex' : 'none';
+    }
+
+    function setResult(show) {
+      document.getElementById('result-section').style.display = show ? 'block' : 'none';
+    }
+
+    function toStars(score) {
+      const filled = Math.round((score / 10) * 5);
+      return '★'.repeat(Math.max(0, filled)) + '☆'.repeat(Math.max(0, 5 - filled));
+    }
+
+    function buildStreamingHTML(providers) {
+      if (!providers) return '<div class="streaming-section"><span class="streaming-unavailable">Streaming info unavailable</span></div>';
+
+      const link = providers.link || '#';
+      const logoURL = p => `https://image.tmdb.org/t/p/w45${p.logo_path}`;
+      const logoImg = p => `<a href="${link}" target="_blank" rel="noopener" title="${escHtml(p.provider_name)}"><img class="provider-logo" src="${logoURL(p)}" alt="${escHtml(p.provider_name)}"></a>`;
+
+      const flat = providers.flatrate?.slice(0, 5) || [];
+      const free = providers.free?.slice(0, 3) || [];
+      const rent = providers.rent?.slice(0, 4) || [];
+      const buy  = providers.buy?.slice(0, 4) || [];
+
+      const rows = [];
+
+      if (flat.length) {
+        rows.push(`<div class="streaming-row"><span class="streaming-label">Stream</span><div class="provider-logos">${flat.map(logoImg).join('')}</div></div>`);
+      }
+      if (free.length) {
+        rows.push(`<div class="streaming-row"><span class="streaming-label">Free</span><div class="provider-logos">${free.map(logoImg).join('')}</div></div>`);
+      }
+      if (rent.length || buy.length) {
+        const combined = [...new Map([...rent, ...buy].map(p => [p.provider_id, p])).values()].slice(0, 5);
+        rows.push(`<div class="streaming-row"><span class="streaming-label">Rent/Buy</span><div class="provider-logos">${combined.map(logoImg).join('')}</div></div>`);
+      }
+
+      if (!rows.length) {
+        return '<div class="streaming-section"><span class="streaming-unavailable">Not available to stream in the US</span></div>';
+      }
+
+      return `<div class="streaming-section">${rows.join('')}</div>`;
+    }
+
+    function escHtml(str) {
+      return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('api-key-input')?.addEventListener('keydown', e => {
+        if (e.key === 'Enter') saveKey();
+      });
+    });
+  </script>
+</body>
+</html>
